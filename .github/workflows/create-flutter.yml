@@ -1,0 +1,90 @@
+name: Create Flutter Project
+
+on:
+  workflow_dispatch:
+    inputs:
+      project_name:
+        description: "Project name (lowercase and underscores)"
+        required: true
+        default: my_app
+        type: string
+      org:
+        description: "Organization (e.g. com.yourname)"
+        required: true
+        default: com.example
+        type: string
+      empty_template:
+        description: "Empty template (no counter demo)"
+        type: boolean
+        default: true
+      android:
+        description: "Android"
+        type: boolean
+        default: true
+      ios:
+        description: "iOS"
+        type: boolean
+        default: true
+      web:
+        description: "Web"
+        type: boolean
+        default: true
+      windows:
+        description: "Windows"
+        type: boolean
+        default: true
+      macos:
+        description: "macOS"
+        type: boolean
+        default: true
+      linux:
+        description: "Linux"
+        type: boolean
+        default: true
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Create project
+        env:
+          PROJECT: ${{ inputs.project_name }}
+          ORG: ${{ inputs.org }}
+          EMPTY: ${{ inputs.empty_template }}
+          ANDROID: ${{ inputs.android }}
+          IOS: ${{ inputs.ios }}
+          WEB: ${{ inputs.web }}
+          WINDOWS: ${{ inputs.windows }}
+          MACOS: ${{ inputs.macos }}
+          LINUX: ${{ inputs.linux }}
+        run: |
+          PLATFORMS=""
+          if [ "$ANDROID" = "true" ]; then PLATFORMS="$PLATFORMS,android"; fi
+          if [ "$IOS" = "true" ]; then PLATFORMS="$PLATFORMS,ios"; fi
+          if [ "$WEB" = "true" ]; then PLATFORMS="$PLATFORMS,web"; fi
+          if [ "$WINDOWS" = "true" ]; then PLATFORMS="$PLATFORMS,windows"; fi
+          if [ "$MACOS" = "true" ]; then PLATFORMS="$PLATFORMS,macos"; fi
+          if [ "$LINUX" = "true" ]; then PLATFORMS="$PLATFORMS,linux"; fi
+          PLATFORMS="${PLATFORMS#,}"
+          if [ -z "$PLATFORMS" ]; then echo "Select at least one platform"; exit 1; fi
+
+          EXTRA=""
+          if [ "$EMPTY" = "true" ]; then EXTRA="--empty"; fi
+
+          flutter create $EXTRA --org "$ORG" --platforms="$PLATFORMS" "$PROJECT"
+
+          zip -r "$PROJECT.zip" "$PROJECT" \
+            -x "*/.dart_tool/*" \
+            -x "*/android/local.properties" \
+            -x "*/ios/Flutter/Generated.xcconfig" \
+            -x "*/ios/Flutter/flutter_export_environment.sh" \
+            -x "*/macos/Flutter/ephemeral/*"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flutter-project
+          path: ${{ inputs.project_name }}.zip
